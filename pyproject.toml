@@ -3,9 +3,9 @@ name = "lump-cs"
 version = "0.1.0"
 description = "Add your description here"
 authors = [
-    { name = "pilchard", email = "187820+pilchard@users.noreply.github.com" }
+    { name = "pilchard", email = "187820+pilchard@users.noreply.github.com" },
 ]
-dependencies = []
+dependencies = ["pydantic>=2.8.2"]
 readme = "README.md"
 requires-python = ">= 3.8"
 
@@ -15,10 +15,31 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = []
+dev-dependencies = ["mypy>=1.10.1"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/lump"]
+
+[tool.ruff]
+include = ["pyproject.toml", "src/**/*.py", "scripts/**/*.py"]
+src = ["src"]
+
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    # Relax the convention by _not_ requiring documentation for every function parameter.
+    "D417",
+    # Relax the convention by _not_ requiring documentation for every function parameter.
+    "D105",
+]
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 20
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
