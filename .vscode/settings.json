@@ -1,0 +1,40 @@
+{
+  "editor.inlineSuggest.enabled": true,
+  "editor.lineHeight": 17,
+  "breadcrumbs.enabled": true,
+  "files.autoSave": "off",
+  "files.exclude": {
+    "**/.csv": true,
+    "**/.parquet": true,
+    "**/.pkl": true,
+    "**/.xls": true
+  },
+  "editor.accessibilitySupport": "off",
+  "[python]": {
+    "editor.formatOnSave": true,
+    // "editor.codeActionsOnSave": {
+    //   "source.fixAll": "explicit",
+    //   "source.organizeImports": "explicit"
+    // },
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    },
+    "editor.defaultFormatter": "charliermarsh.ruff",
+  },
+  "[json]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[jsonc]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[toml]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "tamasfe.even-better-toml"
+  },
+  "ruff.nativeServer": true,
+  "ruff.lint.enable": true,
+  "python.analysis.extraPaths": []
+}
