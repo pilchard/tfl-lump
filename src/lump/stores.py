@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import importlib
 import json
 import pickle
@@ -10,62 +9,56 @@ import pickle
 import httpx
 from pydantic import ValidationError
 
-from lump.client import get_tfl_client
-from lump.config import get_settings
-from lump.models.line import Line
-from lump.models.route import RouteSequence
-from lump.models.shared import Direction, ModeName
-from lump.models.stoppoint import StopPoint
-
-SETTINGS = get_settings()
+from .models.line import Line
+from .models.route import RouteSequence
+from .models.shared import Direction, ModeName
+from .models.stoppoint import StopPoint
 
 
 class Store:
+    """Base Store class."""
+
+    def __init__(self, storepath: str) -> None:
+        self.dat_dir = importlib.resources.files("lump")
+        self.storepath = storepath
+        self.data = {}
+
+    def load(self) -> None:
+        """Load the store data from file if exists otherwise query TfL."""
+        if (self.dat_dir / (self.storepath + ".pkl")).is_file():
+            with (self.dat_dir / (self.storepath + ".pkl")).open("rb") as datafile:
+                self.data = pickle.load(datafile)
+        else:
+            self.data = self.fetch()
+
+        self.save()
+
+    def fetch(self) -> dict:
+        """Fetch store data."""
+        return {}
+
     def save(self) -> None:
-        """Save the stop point date object using pickle."""
+        """Save the store data object using pickle."""
         with (self.dat_dir / (self.storepath + ".pkl")).open("wb") as lib_file:
             pickle.dump(self.data, lib_file)
             lib_file.close()
 
-    def write_csv(self) -> None:
-        """Write store data to csv file."""
-        with (self.dat_dir / (self.storepath + ".csv")).open(
-            "w",
-            newline="",
-        ) as csv_file:
-            fieldnames = list(StopPoint.__fields__.keys())
-            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-
-            writer.writeheader()
-            for stoppoint in self.data.values():
-                writer.writerow(stoppoint.model_dump())
-
     def write_json(self) -> None:
-        """Write store data to csv file."""
+        """Write the store data to a JSON file."""
         with (self.dat_dir / (self.storepath + ".json")).open(
             "w",
             newline="",
         ) as json_file:
-            data_values = []
-            for stoppoint in self.data.values():
-                data_values.append(stoppoint.model_dump())
+            data_values = [stoppoint.model_dump() for stoppoint in self.data.values()]
 
-            json.dump(data_values, json_file, ensure_ascii=False, indent=4)
+            json.dump(data_values, json_file, ensure_ascii=False, indent=4, default=str)
 
 
 class StopPointStore(Store):
     """A store of StopPoint instances keyed by NaPTAN ID."""
 
     def __init__(self) -> None:
-        self.dat_dir = importlib.resources.files("lump")
-        self.storepath = "data/stoppoints"
-        self.data = {}
-
-        if (self.dat_dir / (self.storepath + ".pkl")).is_file():
-            with (self.dat_dir / (self.storepath + ".pkl")).open("rb") as datafile:
-                self.data = pickle.load(datafile)
-        else:
-            self.data = {}
+        super().__init__("data/stoppoints")
 
     def has_stop_point(self, naptan_id: str) -> bool:
         """Check if store includes NaPTAN ID."""
@@ -96,59 +89,47 @@ class LineStore(Store):
         mode: ModeName,
         stop_point_store: StopPointStore | None = None,
     ) -> None:
+        super().__init__(f"data/lines-{mode}")
+
         self.client = client
-
-        self.dat_dir = importlib.resources.files("lump")
-        self.storepath = f"data/lines-{mode}"
-        # self.data = {}
-
-        # self.storepath = importlib.resources.files("lump") / f"data/lines-{mode}.pkl"
-        self.endpoint = "/Line/Mode/bus/Route?serviceTypes=Regular,Night"
+        self.endpoint = f"/Line/Mode/{mode}/Route?serviceTypes=Regular,Night"
 
         if stop_point_store is None:
             self.stop_point_store = StopPointStore()
         else:
             self.stop_point_store = stop_point_store
 
-        self.data = {}
+        self.stop_point_store.load()
 
-    def load(self) -> None:
-        """Load the store data from file if exists otherwise query TfL."""
-        if (self.dat_dir / (self.storepath + ".pkl")).is_file():
-            with (self.dat_dir / (self.storepath + ".pkl")).open("rb") as datafile:
-                self.data = pickle.load(datafile)
-        else:
-            # Fetch from API
+    def fetch(self) -> dict:
+        """Fetch Line and Route data from TfL."""
+        line_list = self.request(self.endpoint).json()
 
-            line_list = self.request(self.endpoint).json()
+        for line_dict in line_list:
+            if line_dict["id"] not in self.data:
+                ## get sequence for each direction
+                for section in line_dict["routeSections"]:
+                    route_sequence = self._get_route_sequence(
+                        line_dict["id"],
+                        section["direction"],
+                    )
 
-            for line_dict in line_list[0:3]:
-                if line_dict["id"] not in self.data:
-                    ## get sequence for each direction
-                    for section in line_dict["routeSections"]:
-                        route_sequence = self._get_route_sequence(
-                            line_dict["id"],
-                            section["direction"],
-                        )
+                    section["isOutboundOnly"] = route_sequence.is_outbound_only
+                    section["lineStrings"] = route_sequence.line_strings
+                    section["orderedLineRoutes"] = route_sequence.ordered_line_routes
 
-                        section["isOutboundOnly"] = route_sequence.is_outbound_only
-                        section["lineStrings"] = route_sequence.line_strings
-                        section["orderedLineRoutes"] = (
-                            route_sequence.ordered_line_routes
-                        )
-
-                    ## parse route and add to store
-                    try:
-                        line = Line.model_validate(line_dict)
-                        self.data[line.id] = line
-                    except ValidationError as exc:
-                        # print(f"Validation error: {exc.errors()[0]!r}")
-                        raise exc from exc
-
-        self.save()
+                ## parse route and add to store
+                try:
+                    line = Line.model_validate(line_dict)
+                    self.data[line.id] = line
+                except ValidationError as exc:
+                    raise exc from exc
 
     def _get_route_sequence(self, line_id: str, direction: Direction) -> RouteSequence:
-        """Fetch route sequence for given Line ID and Direction."""
+        """Fetch route sequence for given Line ID and Direction.
+
+        Saves sequence StopPoint data to the owned StopPointStore.
+        """
         endpoint = f"/Line/{line_id}/Route/Sequence/{direction}"
 
         seq_dict = self.request(endpoint).json()
@@ -163,15 +144,12 @@ class LineStore(Store):
                 self.stop_point_store.add_stop_points(stop_points)
 
         except ValidationError as exc:
-            # print("\nFailed to parse stop point in sequence:")
-            # print(f"Validation error: {exc.errors()[0]!r}")
             raise exc from exc
 
         try:
             return RouteSequence.model_validate(seq_dict)
 
         except ValidationError as exc:
-            # print(f"Validation error: {exc.errors()[0]!r}")
             raise exc from exc
 
     def request(self, endpoint: str) -> httpx.Response:
@@ -187,40 +165,3 @@ class LineStore(Store):
                 f"Error response {exc.response.status_code} while requesting {exc.request.url!r}.",
             )
             raise exc from exc
-
-
-if __name__ == "__main__":
-    ## StopPointStore
-    # sp_store = StopPointStore()
-    # sp_stub = """{"$type":"Tfl.Api.Presentation.Entities.MatchedStop,Tfl.Api.Presentation.Entities","parentId":"490G00010877","stationId":"490G00010877","icsId":"1010877","topMostParentId":"490G00010877","modes":["bus"],"stopType":"NaptanPublicBusCoachTram","stopLetter":"H","lines":[{"$type":"Tfl.Api.Presentation.Entities.Identifier,Tfl.Api.Presentation.Entities","id":"177","name":"177","uri":"/Line/177","type":"Line","crowding":{"$type":"Tfl.Api.Presentation.Entities.Crowding,Tfl.Api.Presentation.Entities"},"routeType":"Unknown","status":"Unknown"},{"$type":"Tfl.Api.Presentation.Entities.Identifier,Tfl.Api.Presentation.Entities","id":"381","name":"381","uri":"/Line/381","type":"Line","crowding":{"$type":"Tfl.Api.Presentation.Entities.Crowding,Tfl.Api.Presentation.Entities"},"routeType":"Unknown","status":"Unknown"},{"$type":"Tfl.Api.Presentation.Entities.Identifier,Tfl.Api.Presentation.Entities","id":"n381","name":"N381","uri":"/Line/n381","type":"Line","crowding":{"$type":"Tfl.Api.Presentation.Entities.Crowding,Tfl.Api.Presentation.Entities"},"routeType":"Unknown","status":"Unknown"},{"$type":"Tfl.Api.Presentation.Entities.Identifier,Tfl.Api.Presentation.Entities","id":"p12","name":"P12","uri":"/Line/p12","type":"Line","crowding":{"$type":"Tfl.Api.Presentation.Entities.Crowding,Tfl.Api.Presentation.Entities"},"routeType":"Unknown","status":"Unknown"},{"$type":"Tfl.Api.Presentation.Entities.Identifier,Tfl.Api.Presentation.Entities","id":"p13","name":"P13","uri":"/Line/p13","type":"Line","crowding":{"$type":"Tfl.Api.Presentation.Entities.Crowding,Tfl.Api.Presentation.Entities"},"routeType":"Unknown","status":"Unknown"}],"status":true,"id":"490010877H","name":"PeckhamBusStation","lat":51.473372,"lon":-0.067963}"""
-
-    # sp_store.add_stop_points([StopPoint.model_validate_json(sp_stub)])
-    # s1 = sp_store.get_stop_point("490010877H")
-    # print(s1)
-
-    # sp_store2 = StopPointStore()
-    # s2 = sp_store2.get_stop_point("490010877H")
-    # print(s2)
-
-    # sp_store2 = sp_store = None
-
-    ## LineStore
-    # Usage
-    with get_tfl_client(
-        app_id=SETTINGS.tfl.app_id,
-        app_key=SETTINGS.tfl.app_key.get_secret_value(),
-        max_requests=500,
-        request_period=60,
-    ) as client:
-        sp_store = StopPointStore()
-        l_store = LineStore(client=client, mode=ModeName.BUS, stop_point_store=sp_store)
-
-        # print(sp_store.data.items())
-
-        l_store.load()
-
-        print(len(sp_store.data))
-        sp_store.write_csv()
-        sp_store.write_json()
-        l_store.write_csv()
-        l_store.write_json()
