@@ -20,58 +20,7 @@ from lump.models.stoppoint import StopPoint
 SETTINGS = get_settings()
 
 
-class Store[T]:
-    data: dict[T]
-
-    def __init__(self, storepath: str) -> None:
-        self.data_dir = importlib.resources.files("lump")
-        self.storepath = storepath
-        self.data = {}
-
-    def load(self) -> None:
-        if (self.dat_dir / (self.storepath + ".pkl")).is_file():
-            with (self.dat_dir / (self.storepath + ".pkl")).open("rb") as datafile:
-                self.data = pickle.load(datafile)
-        else:
-            self.data = self.fetch(self)
-
-    def fetch(self) -> dict[str, T]:
-        return {}
-
-
-class StopPointStore:
-    """A store of StopPoint instances keyed by NaPTAN ID."""
-
-    def __init__(self) -> None:
-        self.dat_dir = importlib.resources.files("lump")
-        self.storepath = "data/stoppoints"
-        self.data = {}
-
-        if (self.dat_dir / (self.storepath + ".pkl")).is_file():
-            with (self.dat_dir / (self.storepath + ".pkl")).open("rb") as datafile:
-                self.data = pickle.load(datafile)
-        else:
-            self.data = {}
-
-    def has_stop_point(self, naptan_id: str) -> bool:
-        """Check if store includes NaPTAN ID."""
-        return naptan_id in self.data
-
-    def get_stop_point(self, naptan_id: str) -> dict[str, StopPoint]:
-        """Return StopPoint for passed NaPTAN ID if it exists, otherwise None."""
-        return self.data.get(naptan_id, None)
-
-    def add_stop_points(self, stoppoints: list[StopPoint]) -> None:
-        """Add StopPoints to the store."""
-        dirty = False
-        for stoppoint in stoppoints:
-            if stoppoint.id not in self.data:
-                self.data[stoppoint.id] = stoppoint
-                dirty = True
-
-        if dirty:
-            self.save()
-
+class Store:
     def save(self) -> None:
         """Save the stop point date object using pickle."""
         with (self.dat_dir / (self.storepath + ".pkl")).open("wb") as lib_file:
@@ -104,7 +53,41 @@ class StopPointStore:
             json.dump(data_values, json_file, ensure_ascii=False, indent=4)
 
 
-class LineStore:
+class StopPointStore(Store):
+    """A store of StopPoint instances keyed by NaPTAN ID."""
+
+    def __init__(self) -> None:
+        self.dat_dir = importlib.resources.files("lump")
+        self.storepath = "data/stoppoints"
+        self.data = {}
+
+        if (self.dat_dir / (self.storepath + ".pkl")).is_file():
+            with (self.dat_dir / (self.storepath + ".pkl")).open("rb") as datafile:
+                self.data = pickle.load(datafile)
+        else:
+            self.data = {}
+
+    def has_stop_point(self, naptan_id: str) -> bool:
+        """Check if store includes NaPTAN ID."""
+        return naptan_id in self.data
+
+    def get_stop_point(self, naptan_id: str) -> dict[str, StopPoint]:
+        """Return StopPoint for passed NaPTAN ID if it exists, otherwise None."""
+        return self.data.get(naptan_id, None)
+
+    def add_stop_points(self, stoppoints: list[StopPoint]) -> None:
+        """Add StopPoints to the store."""
+        dirty = False
+        for stoppoint in stoppoints:
+            if stoppoint.id not in self.data:
+                self.data[stoppoint.id] = stoppoint
+                dirty = True
+
+        if dirty:
+            self.save()
+
+
+class LineStore(Store):
     """A store of StopPoint instances keyed by NaPTAN ID."""
 
     def __init__(
@@ -143,7 +126,7 @@ class LineStore:
                 if line_dict["id"] not in self.data:
                     ## get sequence for each direction
                     for section in line_dict["routeSections"]:
-                        route_sequence = self.get_route_sequence(
+                        route_sequence = self._get_route_sequence(
                             line_dict["id"],
                             section["direction"],
                         )
@@ -164,7 +147,8 @@ class LineStore:
 
         self.save()
 
-    def get_route_sequence(self, line_id: str, direction: Direction) -> RouteSequence:
+    def _get_route_sequence(self, line_id: str, direction: Direction) -> RouteSequence:
+        """Fetch route sequence for given Line ID and Direction."""
         endpoint = f"/Line/{line_id}/Route/Sequence/{direction}"
 
         seq_dict = self.request(endpoint).json()
@@ -203,37 +187,6 @@ class LineStore:
                 f"Error response {exc.response.status_code} while requesting {exc.request.url!r}.",
             )
             raise exc from exc
-
-    def save(self) -> None:
-        """Save the line data object using pickle."""
-        with (self.dat_dir / (self.storepath + ".pkl")).open("wb") as lib_file:
-            pickle.dump(self.data, lib_file)
-            lib_file.close()
-
-    def write_csv(self) -> None:
-        """Write store data to csv file."""
-        with (self.dat_dir / (self.storepath + ".csv")).open(
-            "w",
-            newline="",
-        ) as csv_file:
-            fieldnames = list(Line.__fields__.keys())
-            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-
-            writer.writeheader()
-            for stop_point in self.data.values():
-                writer.writerow(stop_point.model_dump())
-
-    def write_json(self) -> None:
-        """Write store data to csv file."""
-        with (self.dat_dir / (self.storepath + ".json")).open(
-            "w",
-            newline="",
-        ) as json_file:
-            data_values = []
-            for stoppoint in self.data.values():
-                data_values.append(stoppoint.model_dump())
-
-            json.dump(data_values, json_file, ensure_ascii=False, indent=4, default=str)
 
 
 if __name__ == "__main__":
