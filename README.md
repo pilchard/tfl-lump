@@ -1,3 +1,3 @@
-# lump-cs
+# lump
 
 Describe your project here.
