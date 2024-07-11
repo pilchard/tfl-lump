@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import importlib
+import json
 import pickle
 
 import httpx
@@ -19,14 +20,35 @@ from lump.models.stoppoint import StopPoint
 SETTINGS = get_settings()
 
 
+class Store[T]:
+    data: dict[T]
+
+    def __init__(self, storepath: str) -> None:
+        self.data_dir = importlib.resources.files("lump")
+        self.storepath = storepath
+        self.data = {}
+
+    def load(self) -> None:
+        if (self.dat_dir / (self.storepath + ".pkl")).is_file():
+            with (self.dat_dir / (self.storepath + ".pkl")).open("rb") as datafile:
+                self.data = pickle.load(datafile)
+        else:
+            self.data = self.fetch(self)
+
+    def fetch(self) -> dict[str, T]:
+        return {}
+
+
 class StopPointStore:
     """A store of StopPoint instances keyed by NaPTAN ID."""
 
     def __init__(self) -> None:
-        self.storepath = importlib.resources.files("lump") / "data/stoppoints.pkl"
+        self.dat_dir = importlib.resources.files("lump")
+        self.storepath = "data/stoppoints"
+        self.data = {}
 
-        if self.storepath.is_file():
-            with self.storepath.open("rb") as datafile:
+        if (self.dat_dir / (self.storepath + ".pkl")).is_file():
+            with (self.dat_dir / (self.storepath + ".pkl")).open("rb") as datafile:
                 self.data = pickle.load(datafile)
         else:
             self.data = {}
@@ -51,22 +73,35 @@ class StopPointStore:
             self.save()
 
     def save(self) -> None:
-        """Save the RouteStore object to the location specified in `self.datafile`."""
-        with self.storepath.open("wb") as lib_file:
+        """Save the stop point date object using pickle."""
+        with (self.dat_dir / (self.storepath + ".pkl")).open("wb") as lib_file:
             pickle.dump(self.data, lib_file)
             lib_file.close()
 
     def write_csv(self) -> None:
         """Write store data to csv file."""
-        csv_path = importlib.resources.files("lump") / "data/stoppoints.csv"
-
-        with csv_path.open("w", newline="") as csv_file:
+        with (self.dat_dir / (self.storepath + ".csv")).open(
+            "w",
+            newline="",
+        ) as csv_file:
             fieldnames = list(StopPoint.__fields__.keys())
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
 
             writer.writeheader()
-            for stop_point in self.data.values():
-                writer.writerow(stop_point.model_dump())
+            for stoppoint in self.data.values():
+                writer.writerow(stoppoint.model_dump())
+
+    def write_json(self) -> None:
+        """Write store data to csv file."""
+        with (self.dat_dir / (self.storepath + ".json")).open(
+            "w",
+            newline="",
+        ) as json_file:
+            data_values = []
+            for stoppoint in self.data.values():
+                data_values.append(stoppoint.model_dump())
+
+            json.dump(data_values, json_file, ensure_ascii=False, indent=4)
 
 
 class LineStore:
@@ -79,7 +114,12 @@ class LineStore:
         stop_point_store: StopPointStore | None = None,
     ) -> None:
         self.client = client
-        self.storepath = importlib.resources.files("lump") / f"data/lines-{mode}.pkl"
+
+        self.dat_dir = importlib.resources.files("lump")
+        self.storepath = f"data/lines-{mode}"
+        # self.data = {}
+
+        # self.storepath = importlib.resources.files("lump") / f"data/lines-{mode}.pkl"
         self.endpoint = "/Line/Mode/bus/Route?serviceTypes=Regular,Night"
 
         if stop_point_store is None:
@@ -91,8 +131,8 @@ class LineStore:
 
     def load(self) -> None:
         """Load the store data from file if exists otherwise query TfL."""
-        if self.storepath.is_file():
-            with self.storepath.open("rb") as datafile:
+        if (self.dat_dir / (self.storepath + ".pkl")).is_file():
+            with (self.dat_dir / (self.storepath + ".pkl")).open("rb") as datafile:
                 self.data = pickle.load(datafile)
         else:
             # Fetch from API
@@ -165,10 +205,35 @@ class LineStore:
             raise exc from exc
 
     def save(self) -> None:
-        """Save the RouteStore object to the location specified in `self.datafile`."""
-        with self.storepath.open("wb") as lib_file:
+        """Save the line data object using pickle."""
+        with (self.dat_dir / (self.storepath + ".pkl")).open("wb") as lib_file:
             pickle.dump(self.data, lib_file)
             lib_file.close()
+
+    def write_csv(self) -> None:
+        """Write store data to csv file."""
+        with (self.dat_dir / (self.storepath + ".csv")).open(
+            "w",
+            newline="",
+        ) as csv_file:
+            fieldnames = list(Line.__fields__.keys())
+            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+
+            writer.writeheader()
+            for stop_point in self.data.values():
+                writer.writerow(stop_point.model_dump())
+
+    def write_json(self) -> None:
+        """Write store data to csv file."""
+        with (self.dat_dir / (self.storepath + ".json")).open(
+            "w",
+            newline="",
+        ) as json_file:
+            data_values = []
+            for stoppoint in self.data.values():
+                data_values.append(stoppoint.model_dump())
+
+            json.dump(data_values, json_file, ensure_ascii=False, indent=4, default=str)
 
 
 if __name__ == "__main__":
@@ -203,3 +268,6 @@ if __name__ == "__main__":
 
         print(len(sp_store.data))
         sp_store.write_csv()
+        sp_store.write_json()
+        l_store.write_csv()
+        l_store.write_json()
