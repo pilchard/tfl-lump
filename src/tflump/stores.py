@@ -6,14 +6,17 @@ import importlib
 import json
 import pickle
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import httpx
-from pydantic import ValidationError
+import pandas as pd
 
 from .models.line import Line
 from .models.route import RouteSequence
-from .models.shared import Direction, ModeName
 from .models.stoppoint import StopPoint, StopPointList
+
+if TYPE_CHECKING:
+    from .models.shared import ModeName
 
 
 class Store:
@@ -24,6 +27,12 @@ class Store:
         self.storename = storename
         self.data = {}
 
+    # Pandas
+    def dataframe(self) -> pd.Dataframe:
+        """Return the store values as a Pandas DataFrame."""
+        return pd.json_normalize(list(self.data.values()))
+
+    # Lifecycle
     def load(self) -> None:
         """Load the store data from file if exists otherwise query TfL."""
         datafile = self.datadir / (self.storename + ".pkl")
@@ -31,13 +40,14 @@ class Store:
         if datafile.is_file():
             with datafile.open("rb") as datafile:
                 self.data = pickle.load(datafile)
-        else:
-            self.data = self.fetch()
+
+        try:
+            self._fetch()
+        finally:
             self.save()
 
-    def fetch(self) -> dict:
+    def _fetch(self) -> dict:
         """Fetch store data."""
-        return {}
 
     def save(self, filename: str | None = None) -> None:
         """Save the store data object using pickle."""
@@ -50,6 +60,7 @@ class Store:
             pickle.dump(self.data, lib_file)
             lib_file.close()
 
+    # Output
     def write_json(self, filepath: str | None = None) -> json:
         """Write the store data to a JSON file."""
         if filepath is None:
@@ -69,6 +80,12 @@ class StopPointStore(Store):
     def __init__(self) -> None:
         super().__init__("data/stoppoints")
 
+    # Pandas
+    def dataframe(self) -> pd.Dataframe:
+        """Return the store values as a Pandas DataFrame."""
+        return pd.json_normalize(list(self.data.values()))
+
+    # Access
     def has_stop_point(self, naptan_id: str) -> bool:
         """Check if store includes NaPTAN ID."""
         return naptan_id in self.data
@@ -94,110 +111,90 @@ class StopPointStore(Store):
 
 
 class LineStore(Store):
-    """A store of StopPoint instances keyed by NaPTAN ID."""
+    """A store of Lines for a given Mode, keyed by Line ID."""
 
     def __init__(
         self,
         client: httpx.Client,
         mode: ModeName,
-        stop_point_store: StopPointStore | None = None,
+        stoppoint_store: StopPointStore | None = None,
     ) -> None:
         super().__init__(f"data/lines-{mode}")
         self.client = client
         self.mode = mode
 
-        if stop_point_store is None:
-            self.stop_point_store = StopPointStore()
+        if stoppoint_store is None:
+            self.__stoppoint_store = StopPointStore()
         else:
-            self.stop_point_store = stop_point_store
+            self.__stoppoint_store = stoppoint_store
 
-        self.stop_point_store.load()
+        self.__stoppoint_store.load()
 
-    def fetch(self) -> dict:
-        """Fetch Line and Route data from TfL."""
-        temppath = self.datadir / (self.storename + "_temp.pkl")
+    # Pandas
+    def dataframe(self) -> pd.Dataframe:
+        """Return the store values as a Pandas DataFrame."""
+        return pd.json_normalize(list(self.data.values()))
 
-        if temppath.is_file():
-            with temppath.open("rb") as datafile:
-                temp = pickle.load(datafile)
-        else:
-            temp = {}
+    # Access
+    def stoppoint_store(self) -> StopPointStore:
+        return self.__stoppoint_store
 
-        try:
-            line_list = self.request(
-                f"/Line/Mode/{self.mode}/Route?serviceTypes=Regular,Night",
-            ).json()
+    def has_line(self, line_id: str) -> bool:
+        """Check if store includes Line."""
+        return line_id in self.data
 
-            for line_dict in line_list:
-                if line_dict["id"] not in temp:
-                    ## get sequence for each direction
-                    for section in line_dict["routeSections"]:
-                        seq_dict = self.request(
-                            f"/Line/{line_dict["id"]}/Route/Sequence/{section["direction"]}",
-                        ).json()
+    def get_line(self, line_id: str) -> Line:
+        """Return StopPoint for passed NaPTAN ID if it exists, otherwise None."""
+        return self.data.get(line_id, None)
 
-                        # Add StopPoints to store
-                        for seq in seq_dict["stopPointSequences"]:
-                            stop_points = StopPointList.model_validate(seq["stopPoint"])
-                            self.stop_point_store.add_stop_points(
-                                stop_points.model_dump(),
-                            )
+    def get_lines(self, line_ids: list[str]) -> list[Line]:
+        """Return a list of Lines for passed Line IDs, missing ids will be replaced with None."""
+        return [self.data.get(line_id, None) for line_id in line_ids]
 
-                        # merge sequence attributes into `route_section`
-                        route_sequence = RouteSequence.model_validate(seq_dict)
+    def _fetch(self) -> dict:
+        """Fetch Line and Route data from TfL.
 
-                        section["isOutboundOnly"] = route_sequence.is_outbound_only
-                        section["lineStrings"] = route_sequence.line_strings
-                        section["orderedLineRoutes"] = (
-                            route_sequence.ordered_line_routes
+        Fetches all lines and their route sections for the mode
+        of the store. Also catalogs all stop points for each route
+        section in the owned StopPointStore.
+
+        On first run this is very slow due to the number of nested
+        calls made. However on subsequent loads only lines not already
+        in the store will be freshly queried.
+        """
+        # Fetch all lines for mode
+        line_list = self.request(
+            f"/Line/Mode/{self.mode}/Route?serviceTypes=Regular,Night",
+        ).json()
+
+        for line_dict in line_list:
+            if line_dict["id"] not in self.data:
+                ## get sequence for each direction
+                for section in line_dict["routeSections"]:
+                    seq_dict = self.request(
+                        f"/Line/{line_dict["id"]}/Route/Sequence/{section["direction"]}",
+                    ).json()
+
+                    # Add StopPoints to store
+                    for seq in seq_dict["stopPointSequences"]:
+                        stop_points = StopPointList.model_validate(seq["stopPoint"])
+                        self.__stoppoint_store.add_stop_points(
+                            stop_points.model_dump(),
                         )
 
-                    # Parse line and index in temp
-                    line = Line.model_validate(line_dict)
-                    temp[line.id] = line.model_dump()
+                    # merge sequence attributes into `route_section`
+                    route_sequence = RouteSequence.model_validate(seq_dict)
 
-        except Exception:
-            with temppath.open("wb") as lib_file:
-                pickle.dump(temp, lib_file)
-                lib_file.close()
-            return {}
-        else:
-            # cleanup temp file
-            temppath.unlink(missing_ok=True)
+                    section["isOutboundOnly"] = route_sequence.is_outbound_only
+                    section["lineStrings"] = route_sequence.line_strings
+                    section["orderedLineRoutes"] = route_sequence.ordered_line_routes
 
-            return temp
-
-    def _get_route_sequence(self, line_id: str, direction: Direction) -> RouteSequence:
-        """Fetch route sequence for given Line ID and Direction.
-
-        Saves sequence StopPoint data to the owned StopPointStore.
-        """
-        endpoint = f"/Line/{line_id}/Route/Sequence/{direction}"
-
-        seq_dict = self.request(endpoint).json()
-
-        try:
-            # Add StopPoints to store
-            for seq in seq_dict["stopPointSequences"]:
-                stop_points = [
-                    StopPoint.model_validate(stop_point)
-                    for stop_point in seq["stopPoint"]
-                ]
-
-                self.stop_point_store.add_stop_points(stop_points)
-
-        except ValidationError as exc:
-            # print(repr(exc.errors()[0]))
-            raise exc from exc
-
-        try:
-            return RouteSequence.model_validate(seq_dict)
-
-        except ValidationError as exc:
-            raise exc from exc
+                # Parse line and index in store
+                line = Line.model_validate(line_dict)
+                self.data[line.id] = line.model_dump()
 
     def request(self, endpoint: str) -> httpx.Response:
-        """Query endpoint."""
+        """Query TfL endpoint."""
         try:
             response = self.client.get(endpoint)
             return response.raise_for_status()
