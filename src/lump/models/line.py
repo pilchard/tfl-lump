@@ -2,21 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from pydantic import (
-    AliasGenerator,
     BaseModel,
     ConfigDict,
     RootModel,
     field_validator,
-    to_camel,
-    to_snake,
 )
+from pydantic.alias_generators import to_camel
 
-if TYPE_CHECKING:
-    from .route import Route
-    from .shared import ModeName, ServiceType, TfL18
+from .route import Route
+from .shared import ModeName, ServiceType, TfL18
 
 
 class Line(BaseModel):
@@ -44,13 +39,13 @@ class Line(BaseModel):
     service_types: list[ServiceType]
 
     model_config = ConfigDict(
-        alias_generator=AliasGenerator(
-            validation_alias=to_snake,
-            serialization_alias=to_camel,
-        ),
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+        use_enum_values=True,
     )
 
-    @field_validator("serviceTypes", mode="before")
+    @field_validator("service_types", mode="before")
     @classmethod
     def map_service_types(cls, value: list[TfL18]) -> list[ServiceType]:
         """Return a list of valid service types."""

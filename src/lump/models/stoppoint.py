@@ -2,21 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pydantic import BaseModel, ConfigDict, RootModel, field_validator
+from pydantic.alias_generators import to_camel
 
-from pydantic import (
-    AliasGenerator,
-    BaseModel,
-    ConfigDict,
-    RootModel,
-    field_validator,
-    to_camel,
-    to_snake,
-)
-
-if TYPE_CHECKING:
-    from .line import Line
-    from .shared import ModeName
+from .line import Line
+from .shared import ModeName
 
 
 class StopPoint(BaseModel):
@@ -52,6 +42,13 @@ class StopPoint(BaseModel):
     station_id : str
     """
 
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+        use_enum_values=True,
+    )
+
     id: str
     stop_letter: str | None = None
     name: str
@@ -62,13 +59,6 @@ class StopPoint(BaseModel):
     parent_id: str
     top_most_parent_id: str
     station_id: str
-
-    model_config = ConfigDict(
-        alias_generator=AliasGenerator(
-            validation_alias=to_snake,
-            serialization_alias=to_camel,
-        ),
-    )
 
     @field_validator("lines", mode="before")
     @classmethod

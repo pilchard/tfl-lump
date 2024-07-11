@@ -2,22 +2,18 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypedDict
+from datetime import datetime
+from typing import TypedDict
 
 from pydantic import (
-    AliasGenerator,
     BaseModel,
     ConfigDict,
     RootModel,
     field_validator,
-    to_camel,
-    to_snake,
 )
+from pydantic.alias_generators import to_camel
 
-if TYPE_CHECKING:
-    from datetime import datetime
-
-    from .shared import Direction, ServiceType
+from .shared import Direction, ServiceType
 
 
 class TfL22(TypedDict):
@@ -28,10 +24,10 @@ class TfL22(TypedDict):
     service_type: ServiceType
 
     model_config = ConfigDict(
-        alias_generator=AliasGenerator(
-            validation_alias=to_snake,
-            serialization_alias=to_camel,
-        ),
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+        use_enum_values=True,
     )
 
 
@@ -58,13 +54,13 @@ class RouteSequence(BaseModel):
     ordered_line_routes: list[list[str]]
 
     model_config = ConfigDict(
-        alias_generator=AliasGenerator(
-            validation_alias=to_snake,
-            serialization_alias=to_camel,
-        ),
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+        use_enum_values=True,
     )
 
-    @field_validator("orderedLineRoutes", mode="before")
+    @field_validator("ordered_line_routes", mode="before")
     @classmethod
     def map_naptan_ids(cls, value: list[TfL22]) -> list[list[str]]:
         """Return only the `naptanIds` property."""
@@ -130,10 +126,10 @@ class Route(BaseModel):
     ordered_line_routes: list[list[str]]
 
     model_config = ConfigDict(
-        alias_generator=AliasGenerator(
-            validation_alias=to_snake,
-            serialization_alias=to_camel,
-        ),
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+        use_enum_values=True,
     )
 
 
