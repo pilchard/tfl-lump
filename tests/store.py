@@ -1,4 +1,4 @@
-from lump import (
+from tflump import (
     LineStore,
     ModeName,
     StopPoint,
@@ -45,8 +45,9 @@ if __name__ == "__main__":
             l_store.load()
 
             print(len(sp_store.data))
+            print(len(l_store.data))
 
-            sp_store.write_json()
+            sp_store.write_json(filepath="./tests/sp.json")
             l_store.write_json()
 
 
