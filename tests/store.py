@@ -39,13 +39,15 @@ if __name__ == "__main__":
             l_store = LineStore(
                 client=client,
                 mode=ModeName.BUS,
-                stop_point_store=sp_store,
+                stoppoint_store=sp_store,
             )
 
             l_store.load()
+            sp_store.load()
 
             print(len(sp_store.data))
             print(len(l_store.data))
+            print(len(l_store.stoppoint_store().data))
 
             sp_store.write_json(filepath="./tests/sp.json")
             l_store.write_json()
