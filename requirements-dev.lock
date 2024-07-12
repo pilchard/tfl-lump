@@ -37,6 +37,8 @@ httpx==0.27.0
 idna==3.7
     # via anyio
     # via httpx
+iniconfig==2.0.0
+    # via pytest
 ipykernel==6.29.5
     # via tflump
 ipython==8.26.0
@@ -60,6 +62,7 @@ numpy==2.0.0
     # via pandas
 packaging==24.1
     # via ipykernel
+    # via pytest
 pandas==2.2.2
     # via tflump
 parso==0.8.4
@@ -68,6 +71,8 @@ pexpect==4.9.0
     # via ipython
 platformdirs==4.2.2
     # via jupyter-core
+pluggy==1.5.0
+    # via pytest
 prompt-toolkit==3.0.47
     # via ipython
 psutil==6.0.0
@@ -85,6 +90,7 @@ pydantic-settings==2.3.4
     # via tflump
 pygments==2.18.0
     # via ipython
+pytest==8.2.2
 python-dateutil==2.9.0.post0
     # via jupyter-client
     # via pandas

@@ -37,7 +37,7 @@ path = "src/tflump/__init__.py"
 
 [tool.rye]
 managed = true
-dev-dependencies = ["mypy>=1.10.1"]
+dev-dependencies = ["mypy>=1.10.1", "pytest>=8.2.2"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tflump"]
