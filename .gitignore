@@ -175,4 +175,11 @@ cython_debug/
 
 # environment
 .env
+<<<<<<< HEAD
 >>>>>>> a1d9836 (line store + client limits)
+=======
+
+.ipynb_checkpoints
+
+.pytest_cache
+>>>>>>> 0f709fd (build)
