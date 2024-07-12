@@ -3,7 +3,7 @@
 from functools import cache
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, HttpUrl, SecretStr
+from pydantic import AfterValidator, BaseModel, ConfigDict, HttpUrl, SecretStr
 from pydantic_settings import BaseSettings
 
 HttpUrlString = Annotated[HttpUrl, AfterValidator(str)]
@@ -22,12 +22,11 @@ class Settings(BaseSettings):
 
     tfl: TflSettings
 
-    class Config:
-        """Pydantic settings config."""
-
-        env_file_encoding = "utf-8"
-        env_file = ".env"
-        env_nested_delimiter = "__"
+    model_config = ConfigDict(
+        env_file_encoding="utf-8",
+        env_file=".env",
+        env_nested_delimiter="__",
+    )
 
 
 @cache
