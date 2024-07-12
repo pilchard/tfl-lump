@@ -1,12 +1,9 @@
 """Package Config."""
 
 from functools import cache
-from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, HttpUrl, SecretStr
+from pydantic import BaseModel, ConfigDict, SecretStr
 from pydantic_settings import BaseSettings
-
-HttpUrlString = Annotated[HttpUrl, AfterValidator(str)]
 
 
 class TflSettings(BaseModel):
@@ -14,7 +11,6 @@ class TflSettings(BaseModel):
 
     app_id: str
     app_key: SecretStr
-    base_url: HttpUrlString
 
 
 class Settings(BaseSettings):
@@ -33,7 +29,3 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Access cached Settings()."""
     return Settings()
-
-
-if __name__ == "__main__":
-    print(Settings().model_dump())
