@@ -6,9 +6,5 @@ The package implements a modest wrapper around a very small portion of the [TfL 
 ## Data Sources
 - TFL Data from https://api.tfl.gov.uk/
 
-## Further Exploration
-
-[Operational details of bus routes forming the core London bus route network](http://www.londonbusroutes.net/details.htm)
-
 ## Copyright Notices
 Powered by TfL Open Data.  Contains OS data © Crown copyright and database rights 2016 and Geomni UK Map data © and database rights [2019]
