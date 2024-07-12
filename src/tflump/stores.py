@@ -11,12 +11,16 @@ from typing import TYPE_CHECKING
 import httpx
 import pandas as pd
 
+from .client import get_tfl_client
+from .config import get_settings
 from .models.line import Line
 from .models.route import RouteSequence
 from .models.stoppoint import StopPoint, StopPointList
 
 if TYPE_CHECKING:
     from .models.shared import ModeName
+
+SETTINGS = get_settings()
 
 
 class Store:
@@ -77,8 +81,8 @@ class Store:
 class StopPointStore(Store):
     """A store of StopPoint instances keyed by NaPTAN ID."""
 
-    def __init__(self) -> None:
-        super().__init__("data/stoppoints")
+    def __init__(self, storename: str = "data/stoppoints") -> None:
+        super().__init__(storename)
 
     # Pandas
     def dataframe(self) -> pd.Dataframe:
@@ -115,13 +119,20 @@ class LineStore(Store):
 
     def __init__(
         self,
-        client: httpx.Client,
         mode: ModeName,
+        client: httpx.Client | None = None,
         stoppoint_store: StopPointStore | None = None,
     ) -> None:
         super().__init__(f"data/lines-{mode}")
-        self.client = client
         self.mode = mode
+
+        if client is None:
+            self.__client = get_tfl_client(
+                app_id=SETTINGS.tfl.app_id,
+                app_key=SETTINGS.tfl.app_key.get_secret_value(),
+            )
+        else:
+            self.__client = client
 
         if stoppoint_store is None:
             self.__stoppoint_store = StopPointStore()
@@ -151,6 +162,7 @@ class LineStore(Store):
         """Return a list of Lines for passed Line IDs, missing ids will be replaced with None."""
         return [self.data.get(line_id, None) for line_id in line_ids]
 
+    # Lifecycle
     def _fetch(self) -> dict:
         """Fetch Line and Route data from TfL.
 
@@ -196,7 +208,7 @@ class LineStore(Store):
     def request(self, endpoint: str) -> httpx.Response:
         """Query TfL endpoint."""
         try:
-            response = self.client.get(endpoint)
+            response = self.__client.get(endpoint)
             return response.raise_for_status()
         except httpx.RequestError as exc:
             print(f"An error occurred while requesting {exc.request.url!r}.")

@@ -125,7 +125,5 @@ def get_tfl_client(
 
 
 ## Usage
-# with get_tfl_client(
-#     app_id="app_id",
-#     app_key="app_key",
-# ) as client:
+# with get_tfl_client(app_id="app_id", app_key="app_key") as client:
+#     pass
