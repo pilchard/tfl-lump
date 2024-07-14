@@ -86,7 +86,7 @@ matplotlib-inline==0.1.7
     # via ipython
 nest-asyncio==1.6.0
     # via ipykernel
-numpy==2.0.0
+numpy==1.26.4
     # via contourpy
     # via folium
     # via geopandas
