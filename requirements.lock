@@ -13,39 +13,9 @@ annotated-types==0.7.0
     # via pydantic
 anyio==4.4.0
     # via httpx
-appnope==0.1.4
-    # via ipykernel
-asttokens==2.4.1
-    # via stack-data
-branca==0.7.2
-    # via folium
 certifi==2024.7.4
     # via httpcore
     # via httpx
-    # via pyogrio
-    # via pyproj
-    # via requests
-charset-normalizer==3.3.2
-    # via requests
-comm==0.2.2
-    # via ipykernel
-    # via ipywidgets
-contourpy==1.2.1
-    # via matplotlib
-cycler==0.12.1
-    # via matplotlib
-debugpy==1.8.2
-    # via ipykernel
-decorator==5.1.1
-    # via ipython
-executing==2.0.1
-    # via stack-data
-folium==0.17.0
-    # via tflump
-fonttools==4.53.1
-    # via matplotlib
-geopandas==1.0.1
-    # via tflump
 h11==0.14.0
     # via httpcore
 httpcore==1.0.5
@@ -55,72 +25,10 @@ httpx==0.27.0
 idna==3.7
     # via anyio
     # via httpx
-    # via requests
-ipykernel==6.29.5
-    # via tflump
-ipython==8.26.0
-    # via ipykernel
-    # via ipywidgets
-ipywidgets==8.1.3
-    # via tflump
-jedi==0.19.1
-    # via ipython
-jinja2==3.1.4
-    # via branca
-    # via folium
-jupyter-client==8.6.2
-    # via ipykernel
-jupyter-core==5.7.2
-    # via ipykernel
-    # via jupyter-client
-jupyterlab-widgets==3.0.11
-    # via ipywidgets
-kiwisolver==1.4.5
-    # via matplotlib
-markupsafe==2.1.5
-    # via jinja2
-matplotlib==3.9.1
-    # via seaborn
-matplotlib-inline==0.1.7
-    # via ipykernel
-    # via ipython
-nest-asyncio==1.6.0
-    # via ipykernel
 numpy==1.26.4
-    # via contourpy
-    # via folium
-    # via geopandas
-    # via matplotlib
     # via pandas
-    # via pyogrio
-    # via seaborn
-    # via shapely
-    # via tflump
-packaging==24.1
-    # via geopandas
-    # via ipykernel
-    # via matplotlib
-    # via pyogrio
 pandas==2.2.2
-    # via geopandas
-    # via seaborn
     # via tflump
-parso==0.8.4
-    # via jedi
-pexpect==4.9.0
-    # via ipython
-pillow==10.4.0
-    # via matplotlib
-platformdirs==4.2.2
-    # via jupyter-core
-prompt-toolkit==3.0.47
-    # via ipython
-psutil==6.0.0
-    # via ipykernel
-ptyprocess==0.7.0
-    # via pexpect
-pure-eval==0.2.2
-    # via stack-data
 pydantic==2.8.2
     # via pydantic-settings
     # via tflump
@@ -128,60 +36,19 @@ pydantic-core==2.20.1
     # via pydantic
 pydantic-settings==2.3.4
     # via tflump
-pygments==2.18.0
-    # via ipython
-pyogrio==0.9.0
-    # via geopandas
-pyparsing==3.1.2
-    # via matplotlib
-pyproj==3.6.1
-    # via geopandas
 python-dateutil==2.9.0.post0
-    # via jupyter-client
-    # via matplotlib
     # via pandas
 python-dotenv==1.0.1
     # via pydantic-settings
 pytz==2024.1
     # via pandas
-pyzmq==26.0.3
-    # via ipykernel
-    # via jupyter-client
-requests==2.32.3
-    # via folium
-seaborn==0.13.2
-    # via tflump
-shapely==2.0.4
-    # via geopandas
 six==1.16.0
-    # via asttokens
     # via python-dateutil
 sniffio==1.3.1
     # via anyio
     # via httpx
-stack-data==0.6.3
-    # via ipython
-tornado==6.4.1
-    # via ipykernel
-    # via jupyter-client
-traitlets==5.14.3
-    # via comm
-    # via ipykernel
-    # via ipython
-    # via ipywidgets
-    # via jupyter-client
-    # via jupyter-core
-    # via matplotlib-inline
 typing-extensions==4.12.2
     # via pydantic
     # via pydantic-core
 tzdata==2024.1
     # via pandas
-urllib3==2.2.2
-    # via requests
-wcwidth==0.2.13
-    # via prompt-toolkit
-widgetsnbextension==4.0.11
-    # via ipywidgets
-xyzservices==2024.6.0
-    # via folium

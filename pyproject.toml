@@ -13,12 +13,6 @@ dependencies = [
     "pydantic>=2.8.2",
     "pydantic-settings>=2.3.4",
     "pandas>=2.2.2",
-    "ipykernel>=6.29.5",
-    "folium>=0.17.0",
-    "numpy<2.0.0",
-    "seaborn>=0.13.2",
-    "geopandas>=1.0.1",
-    "ipywidgets>=8.1.3",
 ]
 dynamic = ["version"]
 
@@ -28,7 +22,7 @@ documentation = "https://pilchard.github.io/tflump/"
 repository = "https://github.com/pilchard/tflump"
 
 [project.optional-dependencies]
-dev = ["pytest", "importlib_resources"]
+dev = []
 
 [build-system]
 requires = ["hatchling"]
@@ -42,7 +36,17 @@ path = "src/tflump/__init__.py"
 
 [tool.rye]
 managed = true
-dev-dependencies = ["mypy>=1.10.1", "pytest>=8.2.2"]
+dev-dependencies = [
+    "mypy>=1.10.1",
+    "pytest",
+    "importlib_resources",
+    "ipykernel>=6.29.5",
+    "folium>=0.17.0",
+    "numpy<2.0.0",
+    "seaborn>=0.13.2",
+    "geopandas>=1.0.1",
+    "ipywidgets>=8.1.3",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tflump"]
