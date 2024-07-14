@@ -19,7 +19,6 @@ dependencies = [
     "seaborn>=0.13.2",
     "geopandas>=1.0.1",
     "ipywidgets>=8.1.3",
-    "tflump>=0.1.0",
 ]
 dynamic = ["version"]
 
