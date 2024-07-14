@@ -51,7 +51,7 @@ packages = ["src/tflump"]
 [tool.ruff]
 include = ["pyproject.toml", "src/tflump/**/*.py", "scripts/**/*.py"]
 src = ["src"]
-
+extend-include = ["*.ipynb"]
 
 [tool.ruff.lint]
 select = ["ALL"]
