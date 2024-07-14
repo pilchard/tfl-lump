@@ -3,6 +3,8 @@ A cursory exploration of the Transport for London system and its open data API.
 
 The package implements a modest wrapper around a very small portion of the [TfL open data](https://tfl.gov.uk/info-for/open-data-users/) API facilitating fetching of core public transport modes ('bus', 'tube', 'overground', etc). For analysis purposes fetched data is cached to local files. Store objects make the data available as Pandas dataframes and enable writing out as JSON.
 
+![The longest and shortest bus lines in London.](./examples/images/longest_shortest_map.png "Title")
+
 ## Data Sources
 - TFL Data from https://api.tfl.gov.uk/
 
