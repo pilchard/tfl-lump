@@ -184,7 +184,7 @@ class LineStore(Store):
                 ## get sequence for each direction
                 for section in line_dict["routeSections"]:
                     seq_dict = self.request(
-                        f"/Line/{line_dict["id"]}/Route/Sequence/{section["direction"]}",
+                        f"/Line/{line_dict['id']}/Route/Sequence/{section['direction']}",
                     ).json()
 
                     # Add StopPoints to store
