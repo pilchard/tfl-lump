@@ -5,14 +5,14 @@ from __future__ import annotations
 import importlib
 import json
 import pickle
+from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self, cast
 
 import httpx
 import pandas as pd
 
 from .client import get_tfl_client
-from .config import get_settings
 from .models.line import Line
 from .models.route import RouteSequence
 from .models.stoppoint import StopPoint, StopPointList
@@ -20,11 +20,15 @@ from .models.stoppoint import StopPoint, StopPointList
 if TYPE_CHECKING:
     from .models.shared import ModeName
 
-SETTINGS = get_settings()
-
 
 class Store:
     """Base Store class."""
+
+    @lru_cache(maxsize=None)
+    def __new__(cls: type[Store], *args, **kwargs) -> Self:
+        """Cache Store subclasses."""
+        res = super().__new__(cls)
+        return cast(Store, res)
 
     def __init__(self, storename: str) -> None:
         self.datadir = importlib.resources.files("tflump")
@@ -120,24 +124,12 @@ class LineStore(Store):
     def __init__(
         self,
         mode: ModeName,
-        client: httpx.Client | None = None,
-        stoppoint_store: StopPointStore | None = None,
     ) -> None:
         super().__init__(f"data/lines-{mode}")
+
         self.mode = mode
-
-        if client is None:
-            self.__client = get_tfl_client(
-                app_id=SETTINGS.tfl.app_id,
-                app_key=SETTINGS.tfl.app_key.get_secret_value(),
-            )
-        else:
-            self.__client = client
-
-        if stoppoint_store is None:
-            self.__stoppoint_store = StopPointStore()
-        else:
-            self.__stoppoint_store = stoppoint_store
+        self.client = get_tfl_client()
+        self.__stoppoint_store = StopPointStore()
 
         self.__stoppoint_store.load()
 
@@ -159,7 +151,7 @@ class LineStore(Store):
         return self.data.get(line_id, None)
 
     def get_lines(self, line_ids: list[str]) -> list[Line]:
-        """Return a list of Lines for passed Line IDs, missing ids will be replaced with None."""
+        """Return a list of Lines, missing ids will be replaced with None."""
         return [self.data.get(line_id, None) for line_id in line_ids]
 
     # Lifecycle
@@ -208,7 +200,7 @@ class LineStore(Store):
     def request(self, endpoint: str) -> httpx.Response:
         """Query TfL endpoint."""
         try:
-            response = self.__client.get(endpoint)
+            response = self.client.get(endpoint)
             return response.raise_for_status()
         except httpx.RequestError as exc:
             print(f"An error occurred while requesting {exc.request.url!r}.")

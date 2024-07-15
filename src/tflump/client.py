@@ -9,25 +9,28 @@ from datetime import datetime, timezone
 
 import httpx
 
+from .config import get_settings
+
 try:
     from importlib.metadata import version
 except ImportError:
     from importlib_metadata import version
 
-
 __version__ = version("tflump")
+
+settings = get_settings()
 
 
 class RateLimit(httpx.BaseTransport):
     """Implement naive rate limiting in composed Transport."""
 
     ## backoff
-    FACTOR: float = 0.5
-    BASE: float = 2
+    factor: float = 0.5
+    base: float = 2
 
     ## rate limiting
-    MAX_REQUESTS: int
-    REQUEST_PERIOD: int
+    max_requests: int
+    request_period: int
     __history: deque[datetime]
 
     ## debounce
@@ -37,13 +40,13 @@ class RateLimit(httpx.BaseTransport):
     def __init__(
         self,
         transport: httpx.BaseTransport,
-        max_requests: int = 500,
-        request_period: int = 60,
-    ):
+        max_requests: int,
+        request_period: int,
+    ) -> None:
         self.transport = transport
 
-        self.MAX_REQUESTS = max_requests
-        self.REQUEST_PERIOD = request_period
+        self.max_requests = max_requests
+        self.request_period = request_period
         self.__history = deque()
 
         self.__prev = datetime.now(timezone.utc)
@@ -70,19 +73,19 @@ class RateLimit(httpx.BaseTransport):
             except IndexError:
                 return 0
 
-        while len(self.__history) >= self.MAX_REQUESTS:
+        while len(self.__history) >= self.max_requests:
             # Slide history window
-            while len(self.__history) > 0 and delta() > self.REQUEST_PERIOD:
+            while len(self.__history) > 0 and delta() > self.request_period:
                 self.__history.popleft()
 
             # Throttle if history still exceeds max
-            if len(self.__history) >= self.MAX_REQUESTS:
+            if len(self.__history) >= self.max_requests:
                 elapsed = (now - timestamp).total_seconds()
-                remaining = self.REQUEST_PERIOD - elapsed
+                remaining = self.request_period - elapsed
                 # Backoff
                 if remaining > 0:
                     backoff = (
-                        (self.FACTOR * self.BASE**backoff_count) + random.uniform(0, 1)  # noqa: S311
+                        (self.factor * self.base**backoff_count) + random.uniform(0, 1)  # noqa: S311
                     )
                     backoff_count += 1
                     time.sleep(min(remaining, backoff))
@@ -96,19 +99,24 @@ class RateLimit(httpx.BaseTransport):
         return response
 
 
-def get_tfl_client(
-    app_id: str = "",
-    app_key: str = "",
-    retries: int = 3,
-    max_requests: int = 500,
-    request_period: int = 60,
-) -> httpx.Client:
+def get_tfl_client() -> httpx.Client:
     """Create client configured for TfL."""
     headers = {
-        "user-agent": f"python-lump/{__version__,}",
-        "app_id": app_id,
-        "app_key": app_key,
+        "user-agent": f"python-lump/{__version__}",
     }
+    max_requests = 50
+    request_period = 60
+    retries = 3
+
+    app_id = settings.tfl.app_id
+    app_key = settings.tfl.app_key
+
+    if app_id is not None:
+        headers["app_id"] = app_id
+
+    if app_key is not None:
+        headers["app_key"] = app_key.get_secret_value()
+        max_requests = 500
 
     transport = RateLimit(
         httpx.HTTPTransport(retries=retries),

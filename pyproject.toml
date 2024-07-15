@@ -13,6 +13,7 @@ dependencies = [
     "pydantic>=2.8.2",
     "pydantic-settings>=2.3.4",
     "pandas>=2.2.2",
+    "python-dotenv>=1.0.1",
 ]
 dynamic = ["version"]
 

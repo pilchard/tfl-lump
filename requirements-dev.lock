@@ -7,6 +7,7 @@
 #   all-features: false
 #   with-sources: false
 #   generate-hashes: false
+#   universal: false
 
 -e file:.
 annotated-types==0.7.0
@@ -147,6 +148,7 @@ python-dateutil==2.9.0.post0
     # via pandas
 python-dotenv==1.0.1
     # via pydantic-settings
+    # via tflump
 pytz==2024.1
     # via pandas
 pyzmq==26.0.3
